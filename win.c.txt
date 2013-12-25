@@ -863,7 +863,7 @@ type(Event *e, int fd0, CFid *afd, CFid *dfd)
 // It's important to understand what's going on with the event protocol itself.
 // are they purely notifies. i.e.: how is the default action enabled?
 // this function (given an event) sticks the data from the event into the buffer.
-// this is used to handle events that cause sie-effects in the buffer (injecting content.)
+// this is used to handle events that cause side-effects in the buffer (injecting content.)
 void
 sende(Event *e, int fd0, CFid *cfd, CFid *afd, CFid *dfd, int donl)
 {
