@@ -29,6 +29,7 @@ func main() {
 	var err error
 
 	// TODO(rjkroege): look up a window by name if an argument is provided
+	// and connect to it.
 	if len(os.Args) > 1 {
 		log.Fatal("write some code to lookup window by name and connect")
 	} else {
@@ -36,6 +37,14 @@ func main() {
 	}
 	if err != nil {
 		log.Fatal("can't open the window? ", err.Error())
+	}
+
+	for {
+		e, err := win.ReadEvent()
+		if err != nil {
+			log.Fatal("event stream stopped? ", err.Error())
+		}
+		log.Print("got event ", e.Text)
 	}
 
 	win.Fprintf("body", "hi rob")
