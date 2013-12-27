@@ -7,12 +7,14 @@
 package main
 
 import (
+	"bytes"
+	"code.google.com/p/goplan9/plan9/acme"
 	"fmt"
 	"log"
+	"os"
 //	"code.google.com/p/goplan9/draw"
 //	"image"
-	"code.google.com/p/goplan9/plan9/acme"
-	"os"
+	"github.com/rjkroege/winmux/ttypair"
 )
 
 func main() {
@@ -77,7 +79,13 @@ func acmetowin(win *acme.Win) {
 	debug := true
 
 	// What is this for? I'll find out.
+	// I should have a separate struct tracking the Acme
+	// buffer state. Thi is what is in q.
+
+	// Note that I will need to stash the contents of the buffer in a struct
+	// per pty pair.
 	var q Q
+	t := ttypair.New()
 
 	for {
 		if(debug) {
@@ -140,58 +148,44 @@ func acmetowin(win *acme.Win) {
 //					type(&e, fd0, afd, dfd);
 //				}
 //				break;
-//			case 'D':    // deleting text from the body
-//				n = delete(&e);
-//				q.p -= n;
-//				if(israw(fd0) && e.Q1 >= q.p+n)
-//					sendbs(fd0, n);
-//				break;
-//			case 'x':    // button 2 in the tag or body
-//			case 'X':
-//				if(e.flag & 2)
-//					gete(efd, &e2);
-//				if(e.flag & 8){
-//					gete(efd, &e3);
-//					gete(efd, &e4);
-//				}
-//				if(e.flag&1 || (e.C2=='x' && e.nr==0 && e2.nr==0)){
-//					/* send it straight back */
-//					fsfidprint(efd, "%c%c%d %d\n", e.C1, e.C2, e.Q0, e.Q1);
-//					break;
-//				}
-//				if(e.Q0==e.Q1 && (e.flag&2)){
-//					e2.flag = e.flag;
-//					e = e2;
-//				}
-//				char buf[100];
-//				snprint(buf, sizeof buf, "%.*S", e.nr, e.r);
-//				if(cistrcmp(buf, "cook") == 0) {
+			case 'D':    // deleting text from the body
+				n := t.Delete(e);
+				// TODO(rjkroege): fold this into t? Keep buffer state
+				// separate.
+				q.p -= n;
+				if t.Israw() && e.Q1 >= q.p+n {
+					t.Sendbs(n);
+				}
+				break;
+			case 'x':    // button 2 in the tag or body
+			case 'X':
+				if(e.Flag & 1 != 0 || (e.C2=='x' && e.Nr==0)){
+					/* send it straight back */
+					win.WriteEvent(e);
+					break;
+				}
+				if bytes.Equal([]byte("cook"), e.Text) {
+					log.Print("should set cook to 1 whatever that does.")
 //					cook = 1;
-//					break;
-//				}
-//				if(cistrcmp(buf, "nocook") == 0) {
+					break;
+				}
+				if bytes.Equal([]byte("nocook"), e.Text) {
+					log.Print("should clear cook")
 //					cook = 0;
-//					break;
-//				}
-//				if(e.flag & 8){
-//					if(e.Q1 != e.Q0){
-//						sende(&e, fd0, cfd, afd, dfd, 0);
-//						sende(&blank, fd0, cfd, afd, dfd, 0);
-//					}
-//					sende(&e3, fd0, cfd, afd, dfd, 1);
-//				}else	 if(e.Q1 != e.Q0)
-//					sende(&e, fd0, cfd, afd, dfd, 1);
-//				break;
-//			case 'l':        // button 3, tag or body
-//			case 'L':
-//				/* just send it back */
-//				if(e.flag & 2)
-//					gete(efd, &e2);
-//				fsfidprint(efd, "%c%c%d %d\n", e.C1, e.C2, e.Q0, e.Q1);
-//				break;
-//			case 'd':        // text deleted or inserted into the tag.
-//			case 'i':
-//				break;
+					break;
+				}
+				// Send stuff to child
+				log.Printf("should send %s to child process\n", e.Text)
+				// Shouldn't this also push the contents to the 
+				// sendtochild(...)
+			case 'l':        // button 3, tag or body
+			case 'L':
+				/* just send it back */
+				win.WriteEvent(e);
+				break;
+			case 'd':        // text deleted or inserted into the tag.
+			case 'i':
+				break;
 			default:
 				unknown(e)
 			}
