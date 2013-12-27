@@ -157,8 +157,7 @@ func acmetowin(win *acme.Win) {
 					t.Sendbs(n);
 				}
 				break;
-			case 'x':    // button 2 in the tag or body
-			case 'X':
+			case 'x',  'X':	// button 2 in the tag or body
 				if(e.Flag & 1 != 0 || (e.C2=='x' && e.Nr==0)){
 					/* send it straight back */
 					win.WriteEvent(e);
@@ -166,25 +165,23 @@ func acmetowin(win *acme.Win) {
 				}
 				if bytes.Equal([]byte("cook"), e.Text) {
 					log.Print("should set cook to 1 whatever that does.")
-//					cook = 1;
+					t.Setcook(true)
 					break;
 				}
 				if bytes.Equal([]byte("nocook"), e.Text) {
 					log.Print("should clear cook")
-//					cook = 0;
+					t.Setcook(false)
 					break;
 				}
 				// Send stuff to child
 				log.Printf("should send %s to child process\n", e.Text)
 				// Shouldn't this also push the contents to the 
 				// sendtochild(...)
-			case 'l':        // button 3, tag or body
-			case 'L':
+			case 'l', 'L':	// button 3, tag or body
 				/* just send it back */
 				win.WriteEvent(e);
 				break;
-			case 'd':        // text deleted or inserted into the tag.
-			case 'i':
+			case 'd', 'i': // text deleted or inserted into the tag.
 				break;
 			default:
 				unknown(e)

@@ -43,3 +43,7 @@ func (t *Tty) Sendbs(n int) {
 	log.Printf("Sendbs %d\n", n)
 }
 
+func (t *Tty) Setcook(b bool) {
+	t.cook = b;
+	log.Printf("Setcook to %b\n", b)
+}
