@@ -47,3 +47,22 @@ func (t *Tty) Setcook(b bool) {
 	t.cook = b;
 	log.Printf("Setcook to %b\n", b)
 }
+
+// Writes the provided buffer to the associated file descriptor.
+// Usually used to ship a 0x7F to the remote (so far)
+// probably care about errors...
+func (t *Tty) UnbufferedWrite(b []byte) error {
+	log.Print("attempting to write a delete to the remote\n")
+	return nil
+}
+
+// Add typing to the buffer or do a bypass write as necessary
+func (t *Tty) Type(e *acme.Event) {
+	log.Printf("should add the typing to the buffer?\n")
+}
+
+// Return some kind of count of something in the in-progress typing buffer.
+func (t *Tty) Ntyper() int {
+	// TODO(rjkroege): Write me.
+	return 1
+}
