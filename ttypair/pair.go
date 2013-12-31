@@ -24,12 +24,11 @@ func New() (*Tty) {
 	return &Tty{cook: true, password: false, fd0: -1}
 }
 
-// Returns true if t needs to be treated as a raw thinger.
-// TODO(rjkroege): Make a type that wraps a io.Reader/Writer?
+// Returns true if t needs to be treated as a raw tty.
 func (t *Tty) Israw() bool {
-//	return (!t.cook || t.password) && !isecho(t.fd0);
 	log.Print("Israw\n")
-	return false
+	// TODO(rjkroege): Pull in isecho.
+	return (!t.cook || t.password) /* && !isecho(t.fd0) */;
 }
 
 // Deletes characters from the buffer etc
@@ -56,9 +55,64 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 	return nil
 }
 
+/*
+	In win, the buffer is a window onto the larger Acme window.
+	Much of the complexity is in supporting that `typing` buffer is
+	a small window into a larger buffer.
+
+	I will need a complete buffer to support muxing / autosave.
+
+	Perhaps I should accept this now? The right way is to maintain a
+	parallel buffer and apply edits to it. 
+
+	The low road way is to just re-read the buffer.This can be replaced
+	with something clever where I collect the edits?
+
+	Buffer management is going to go badly with the passwordy stuff.
+	What to do next...
+
+	Let's get it working first in the existing way. I need a buffer class where we
+	accumulate typing
+*/
+
+func (t *Tty) addtype(e *acme.Event) {
+	// I need to manage a buffer.
+	log.Print("addtype... do the buffer management\n")
+}
+
 // Add typing to the buffer or do a bypass write as necessary
+// TODO(rjkroege): This is not in the right place.
 func (t *Tty) Type(e *acme.Event) {
 	log.Printf("should add the typing to the buffer?\n")
+
+	// what about case where amount added is too large to be in event?
+
+	if e.Nr > 0 {
+		// Call addtype..
+		t.addtype(e)
+	} else {
+		log.Fatal("you've not handled the case where you need to read from acme\n")
+	}
+
+	if t.Israw() {
+		// This deletes the character typed if we have set israw so that
+		// raw mode works properly.
+		log.Printf("unsupported raw mode\n");
+//		n = sprint(buf, "#%d,#%d", e->q0, e->q1);
+//		fswrite(afd, buf, n);
+//		fswrite(dfd, "", 0);
+//		q.p -= e->q1 - e->q0;
+	}
+	t.sendtype()
+	if len(e.Text) > 0 && e.Text[len(e.Text) - 1] == '\n' {
+		// Not really clear to me what this is for.
+		t.cook = true;
+	}
+}
+
+
+func (t *Tty) sendtype() {
+	log.Print("write sendtype\n")
 }
 
 // Return some kind of count of something in the in-progress typing buffer.

@@ -53,14 +53,18 @@ func (ws *Winslice) Addtyping(ty []byte, p int) {
 	p = p - ws.Offset
 	h := ws.Typing[0:p]
 	t := ws.Typing[p:]
+	tc := make([]byte, len(t))
+	copy(tc, t)
 
-	// Can I append to an empty slice?
-	n := append(h, ty...)
-	n = append(n, t...)
+	n := append(h[0:p], ty...)
+	n = append(n, tc...)
 	ws.Typing = n
 }
 
 // Advance the offset.
+// This function might have to do something more clever
+// as I understand the code better.
+// I think I have to chop the front off..
 func (ws *Winslice) Move(p int) {
 	ws.Offset += p	
 }

@@ -161,6 +161,7 @@ func acmetowin(win *acme.Win) {
 				}
 				break;
 			case 'x',  'X':	// button 2 in the tag or body
+				// TODO(rjkroege): Copy the text to the bottom.
 				if(e.Flag & 1 != 0 || (e.C2=='x' && e.Nr==0)){
 					/* send it straight back */
 					win.WriteEvent(e);
