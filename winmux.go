@@ -44,6 +44,7 @@ func main() {
 	win.Fprintf("body", "hi rob")
 
 	// You will want this to run in its own goroutine?
+	// perhaps..
 	/*
 		Mini design note: I can imagine having a single goroutine owning the
 		connection to the acme instead of using a lock. Except that the event
@@ -53,6 +54,10 @@ func main() {
 		I'll stick with the lock for the moment.
 	*/
 	acmetowin(win)
+
+	/*
+		Start the  acme sender.
+	*/
 
 	win.CloseFiles()
 	fmt.Print("bye\n")
@@ -65,6 +70,9 @@ func main() {
 // off the win?
 type Q struct {
 	p int
+	// TODO(rjkroege): Insert the lock here
+	// TODO(rjkroege): Insert the win here
+	// TODO(rjkroege): rationalize where this is made and passed.
 }
 
 

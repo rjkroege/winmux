@@ -10,10 +10,11 @@ import (
 	"bytes"
 	"log"
 	"code.google.com/p/goplan9/plan9/acme"
+	"github.com/rjkroege/winmux/acmebufs"
 )
 
 type Tty struct  {
-	bytes.Buffer
+	ws *acmebufs.Winslice
 	cook bool
 	password bool
 	fd0 int	
@@ -21,7 +22,7 @@ type Tty struct  {
 
 // Creates a Tty object
 func New() (*Tty) {
-	return &Tty{cook: true, password: false, fd0: -1}
+	return &Tty{ws: acmebufs.New(), cook: true, password: false, fd0: -1}
 }
 
 // Returns true if t needs to be treated as a raw tty.
@@ -75,9 +76,13 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 	accumulate typing
 */
 
-func (t *Tty) addtype(e *acme.Event) {
-	// I need to manage a buffer.
+// Adds typing to the buffer associated with this pair at position p0.
+func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 	log.Print("addtype... do the buffer management\n")
+	if bytes.Index(typing, []byte{3, 0x7}) != -1 {
+		t.ws.Reset()
+	}
+	t.ws.Addtyping(typing, p0)
 }
 
 // Add typing to the buffer or do a bypass write as necessary
@@ -88,10 +93,11 @@ func (t *Tty) Type(e *acme.Event) {
 	// what about case where amount added is too large to be in event?
 
 	if e.Nr > 0 {
-		// Call addtype..
-		t.addtype(e)
+		// TODO(rjkroege): Conceivably, I am not shifting the offset enough.
+		t.addtype(e.Text, e.Q0, e.C1 == 'K' /* Verify this test. */)
 	} else {
 		log.Fatal("you've not handled the case where you need to read from acme\n")
+		// TODO(rjkroege): Write the acme fetcher...
 	}
 
 	if t.Israw() {
@@ -110,10 +116,52 @@ func (t *Tty) Type(e *acme.Event) {
 	}
 }
 
-
+// This is sendtype !raw. 
+// TODO(rjkroege): Write sendtype_raw too.
 func (t *Tty) sendtype() {
 	log.Print("write sendtype\n")
+
+	// raw and cooked mode are interleaved. Write cooked mode
+	// aside: we should be removing the typed characters in acme right 
+	// because otherwise the echo will insert them twice... (this block of code)
+
+	typebreaks := bytes.Split(t.ws.Typing, []byte{ '\n', 0x04 })
+	for _,  s := range typebreaks[0:len(typebreaks)-1] {
+		// Skip the last one because it's the text *following* the newline.
+		echoed(s)
+		t.UnbufferedWrite(s)	// Send to the child program
+	}
+	
+	// Does this mean that the store backing it grows indefinitely?
+	t.ws.Typing = typebreaks[len(typebreaks)-1]
 }
+
+// Inserts the provided buffer into Acme.
+func echoed(s []byte) {
+	// TODO(rjkroege): Write me
+	log.Print("echoing back...\n")
+
+	/*
+		Only one thread can be writing to the acme buffer at
+		a time. The existing win implementation uses a lock.
+		Would I prefer to not be lock based and simply have
+		a single thread that processes a series of messages
+		to update the acme.
+
+		we therefore might have the following threads:
+
+		*  listener for events
+		*  waiting on channel, updates acme
+		*  listener for output from rc
+
+		which obviates the need for locks
+
+		I will use a lock.
+	*/
+	// TODO(rjkroege): I need the win construct.
+	
+}
+
 
 // Return some kind of count of something in the in-progress typing buffer.
 func (t *Tty) Ntyper() int {

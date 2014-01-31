@@ -26,6 +26,13 @@ func New() (*Winslice) {
 	return &Winslice{0, make([]byte, 0)}	
 }
 
+// Resets the winslice to no longer contain text.
+// TODO(rjkroege): Make sure that this is right. In particular, 
+// that we don't toss the offset.
+func (ws *Winslice) Reset() {
+	ws.Typing = ws.Typing[0:0]
+}
+
 // assertion: reading [offset, offset + len(Typing)) from Acme land will
 // give me the same contents as Typing. Hopefully.
 
@@ -68,7 +75,6 @@ func (ws *Winslice) Addtyping(ty []byte, p int) {
 func (ws *Winslice) Move(p int) {
 	ws.Offset += p	
 }
-
 
 
 
