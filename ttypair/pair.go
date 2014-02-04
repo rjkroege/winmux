@@ -163,10 +163,3 @@ func echoed(s []byte) {
 	// TODO(rjkroege): I need the win construct.
 	
 }
-
-// OBSOLETE. TODO(rjkroege): Remove? 
-// Return some kind of count of something in the in-progress typing buffer.
-func (t *Tty) Ntyper() int {
-	// TODO(rjkroege): Write me.
-	return 1
-}
