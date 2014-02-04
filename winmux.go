@@ -80,7 +80,7 @@ func acmetowin(q *Q) {
 	for {
 		if(debug) {
 			a, b := t.Extent()
-			log.Printf("typing[%d,%d)\n", a, b)
+			log.Printf("typing[%d,%d), %s\n", a, b, t)
 		}
 		e, err := q.Win.ReadEvent()
 		if err != nil {

@@ -25,6 +25,9 @@ type Winslice struct {
 	Typing []byte			// UTF8 slice of Acme buffer
 }
 
+func (ws *Winslice) String() string {
+	return string(ws.Typing)
+}
 
 func New() (*Winslice) {
 	return &Winslice{0, make([]byte, 0)}	
