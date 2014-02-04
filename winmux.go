@@ -15,7 +15,14 @@ import (
 //	"code.google.com/p/goplan9/draw"
 //	"image"
 	"github.com/rjkroege/winmux/ttypair"
+	"sync"
 )
+
+type Q struct {
+	// p int
+	Win *acme.Win
+	sync.Mutex
+}
 
 func main() {
 	fmt.Print("hello from winmux\n");
@@ -27,7 +34,7 @@ func main() {
 	
 	log.Print(os.Args[0])
 
-	var win *acme.Win
+	var q Q
 	var err error
 
 	// TODO(rjkroege): look up a window by name if an argument is provided
@@ -35,75 +42,47 @@ func main() {
 	if len(os.Args) > 1 {
 		log.Fatal("write some code to lookup window by name and connect")
 	} else {
-		win,err = acme.New()
+		q.Win,err = acme.New()
 	}
 	if err != nil {
 		log.Fatal("can't open the window? ", err.Error())
 	}
 
-	win.Fprintf("body", "hi rob")
+	q.Win.Fprintf("body", "hi rob\n")
+	acmetowin(&q)
 
-	// You will want this to run in its own goroutine?
-	// perhaps..
-	/*
-		Mini design note: I can imagine having a single goroutine owning the
-		connection to the acme instead of using a lock. Except that the event
-		reader is synchronous and it can be waiting for an arbitrary while
-		on input.
+	// TODO(rjkroege): start the function that receives from the pty and inserts into acme
 
-		I'll stick with the lock for the moment.
-	*/
-	acmetowin(win)
-
-	/*
-		Start the  acme sender.
-	*/
-
-	win.CloseFiles()
+	q.Win.CloseFiles()
 	fmt.Print("bye\n")
 }
 
-// TODO(rjkroege): move me to top
-// TODO(rjkroege): figure out what I do
-// TODO(rjkroege): handle what I'm suppose to do properly
-// There is one of these per Acme window. Really, we should dangle
-// off the win?
-type Q struct {
-	p int
-	// TODO(rjkroege): Insert the lock here
-	// TODO(rjkroege): Insert the win here
-	// TODO(rjkroege): rationalize where this is made and passed.
-}
 
 
 func unknown(e *acme.Event) {
-			log.Printf("unknown message %c%c\n", e.C1, e.C2);
+	log.Printf("unknown message %c%c\n", e.C1, e.C2);
 }
 
 // Replicates the functionality of the stdinproc in win.c
 // Reads the event stream from acme, updates the window and
-// echos the received content
-// note that the connection to the Acme is not thread safe so we 
-// need a lock.
-func acmetowin(win *acme.Win) {
+// echos the received content.
+func acmetowin(q *Q) {
 	debug := true
 
-	// What is this for? I'll find out.
-	// I should have a separate struct tracking the Acme
-	// buffer state. Thi is what is in q.
-
-	// Note that I will need to stash the contents of the buffer in a struct
-	// per pty pair.
-	var q Q
 
 	// this needs to be adjustable as I change buffers. could destroy/reconnect?
 	t := ttypair.New()
+	
+	// TODO(rjkroege): extract the initial value of Offset from the Acme buffer.
+	// TODO(rjkroege): verify the correctness of this position.
+	t.Move(len("hi rob\n"))
 
 	for {
 		if(debug) {
-			log.Printf("typing[%d,%d)\n", q.p, q.p /* +ntyper */);
+			a, b := t.Extent()
+			log.Printf("typing[%d,%d)\n", a, b)
 		}
-		e, err := win.ReadEvent()
+		e, err := q.Win.ReadEvent()
 		if err != nil {
 			log.Fatal("event stream stopped? ", err.Error())
 		}
@@ -112,7 +91,7 @@ func acmetowin(win *acme.Win) {
 		}
 		
 		// queue for lock
-		// qlock(&q.lk);
+		q.Lock();
 
 		switch(e.C1) {
 		default:	// be backwards compatible: ignore additional future messages.
@@ -123,7 +102,7 @@ func acmetowin(win *acme.Win) {
 				if(debug) {
 					log.Printf("shift typing %d... ", e.Q1 - e.Q0);
 				}
-				q.p += e.Q1-e.Q0;
+				t.Move(e.Q1-e.Q0);
 			case 'i', 'd':		/* tag */
 			default:
 				unknown(e)
@@ -145,26 +124,25 @@ func acmetowin(win *acme.Win) {
 //					buf[0] = 0x7F;
 					// ship DEL off to child.
 					t.UnbufferedWrite([]byte{0x7F})
-				case e.Q0 < q.p:
-					// We're tracking the length of the buffer in q.p
-					// this is inserting before the end.
+				case t.Beforeslice(e.Q0):
+					// Inserting before the final line. Doesn't affect the last line.
 					if debug {
 						log.Printf("shift typing %d... ", e.Q1-e.Q0);
 					}
-					q.p += e.Q1-e.Q0;
-				case e.Q0 <= q.p+ t.Ntyper():
-					// this is typing at the end.
+					t.Move(e.Q1-e.Q0);
+				case t.Inslice(e.Q0):
+					// Typing in the final line.
 					if(debug) {
 						log.Printf("type... ");
 					}
 					t.Type(e /* afd, dfd */);
 				}
 			case 'D':    // deleting text from the body
-				n := t.Delete(e);
-				// TODO(rjkroege): fold this into t? Keep buffer state
-				// separate.
-				q.p -= n;
-				if t.Israw() && e.Q1 >= q.p+n {
+				n := t.Delete(e); 
+				// TODO(rjkroege): Delete from the winslice should
+				// automatically update the Offset in Winslice?
+				t.Move(-n);
+				if t.Israw() && t.Afterslice(e.Q1, n) {
 					t.Sendbs(n);
 				}
 				break;
@@ -172,7 +150,7 @@ func acmetowin(win *acme.Win) {
 				// TODO(rjkroege): Copy the text to the bottom.
 				if(e.Flag & 1 != 0 || (e.C2=='x' && e.Nr==0)){
 					/* send it straight back */
-					win.WriteEvent(e);
+					q.Win.WriteEvent(e);
 					break;
 				}
 				if bytes.Equal([]byte("cook"), e.Text) {
@@ -191,7 +169,7 @@ func acmetowin(win *acme.Win) {
 				// sendtochild(...)
 			case 'l', 'L':	// button 3, tag or body
 				/* just send it back */
-				win.WriteEvent(e);
+				q.Win.WriteEvent(e);
 				break;
 			case 'd', 'i': // text deleted or inserted into the tag.
 				break;
@@ -200,6 +178,6 @@ func acmetowin(win *acme.Win) {
 			}
 		}
 		// Release the lock.
-		// qunlock(&q.lk);
+		q.Unlock();
 	}
 }

@@ -8,6 +8,10 @@
 // Later, I will want to preserve the whole buffer. (Additionally, I will need
 // this functionality to implement font highlighting.)
 
+// Bikeshedding: this class is not named well. It is the last line of the
+// acme win that has not been sent to the shell. Hence I see the point
+// of calling it "Typing" in the original code.
+
 package acmebufs
 
 import (
@@ -68,14 +72,41 @@ func (ws *Winslice) Addtyping(ty []byte, p int) {
 	ws.Typing = n
 }
 
-// Advance the offset.
+// Move the offset.
 // This function might have to do something more clever
-// as I understand the code better.
-// I think I have to chop the front off..
+// as I understand the code better. It might have to chop the
+// front off the typing.
 func (ws *Winslice) Move(p int) {
 	ws.Offset += p	
 }
 
+// Is the provided position q0 in the Acme buffer before the start of
+// the slice. In particular: the ws is usually the last incomplete line
+// of text yet to be delivered to the shell and Offset is its start.
+func (ws *Winslice) Beforeslice(q0 int) bool {
+	return q0 < ws.Offset
+}
 
+// Returns true if the given address is within the slice.
+func (ws *Winslice) Inslice(q0 int) bool {
+	return q0 <= ws.Offset + len(ws.Typing)
+}
 
+// Returns true if the given position is at the end or beyond the
+// the slice. 
+// I think. It's not quite clear what this is testing...
+func (ws *Winslice) Afterslice(q0, n int) bool {
+	return q0 >= ws.Offset + n
+}
 
+func (ws *Winslice) Ntyper() int {
+	return  len(ws.Typing)
+}
+
+// Use this for logging.
+// NB: ws.Offset corresponds to "p" and len(ws.Typing) to ntyper
+// TODO(rjkroege): Offset could be called p
+// TODO(rjkroege): someday. refactor this nicely.
+func (ws *Winslice) Extent() (int, int) {
+	return ws.Offset, ws.Offset + len(ws.Typing)
+}

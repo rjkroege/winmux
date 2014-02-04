@@ -14,7 +14,7 @@ import (
 )
 
 type Tty struct  {
-	ws *acmebufs.Winslice
+	acmebufs.Winslice
 	cook bool
 	password bool
 	fd0 int	
@@ -22,7 +22,7 @@ type Tty struct  {
 
 // Creates a Tty object
 func New() (*Tty) {
-	return &Tty{ws: acmebufs.New(), cook: true, password: false, fd0: -1}
+	return &Tty{cook: true, password: false, fd0: -1}
 }
 
 // Returns true if t needs to be treated as a raw tty.
@@ -49,10 +49,11 @@ func (t *Tty) Setcook(b bool) {
 }
 
 // Writes the provided buffer to the associated file descriptor.
-// Usually used to ship a 0x7F to the remote (so far)
-// probably care about errors...
+// Either a single delete character to stop the remote or a single
+// command line for the remote shell to execute.
+// TODO(rjkroege): Send the provided buffer off to the child process.
 func (t *Tty) UnbufferedWrite(b []byte) error {
-	log.Print("attempting to write a delete to the remote\n")
+	log.Println("UnbufferedWrite: ", string(b))
 	return nil
 }
 
@@ -80,9 +81,9 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 	log.Print("addtype... do the buffer management\n")
 	if bytes.Index(typing, []byte{3, 0x7}) != -1 {
-		t.ws.Reset()
+		t.Reset()
 	}
-	t.ws.Addtyping(typing, p0)
+	t.Addtyping(typing, p0)
 }
 
 // Add typing to the buffer or do a bypass write as necessary
@@ -125,7 +126,7 @@ func (t *Tty) sendtype() {
 	// aside: we should be removing the typed characters in acme right 
 	// because otherwise the echo will insert them twice... (this block of code)
 
-	typebreaks := bytes.Split(t.ws.Typing, []byte{ '\n', 0x04 })
+	typebreaks := bytes.Split(t.Typing, []byte{ '\n', 0x04 })
 	for _,  s := range typebreaks[0:len(typebreaks)-1] {
 		// Skip the last one because it's the text *following* the newline.
 		echoed(s)
@@ -133,7 +134,8 @@ func (t *Tty) sendtype() {
 	}
 	
 	// Does this mean that the store backing it grows indefinitely?
-	t.ws.Typing = typebreaks[len(typebreaks)-1]
+	// I think yes. I should copy.
+	t.Typing = typebreaks[len(typebreaks)-1]
 }
 
 // Inserts the provided buffer into Acme.
@@ -162,7 +164,7 @@ func echoed(s []byte) {
 	
 }
 
-
+// OBSOLETE. TODO(rjkroege): Remove? 
 // Return some kind of count of something in the in-progress typing buffer.
 func (t *Tty) Ntyper() int {
 	// TODO(rjkroege): Write me.
