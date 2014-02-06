@@ -80,7 +80,7 @@ func acmetowin(q *Q) {
 	for {
 		if(debug) {
 			a, b := t.Extent()
-			log.Printf("typing[%d,%d), %s\n", a, b, t)
+			log.Printf("==> typing[%d,%d), %s\n", a, b, t)
 		}
 		e, err := q.Win.ReadEvent()
 		if err != nil {
@@ -133,7 +133,7 @@ func acmetowin(q *Q) {
 				case t.Inslice(e.Q0):
 					// Typing in the final line.
 					if(debug) {
-						log.Printf("type... ");
+						log.Printf("typing in last line");
 					}
 					t.Type(e /* afd, dfd */);
 				}

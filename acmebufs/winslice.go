@@ -60,6 +60,7 @@ func (ws *Winslice) Reset() {
 // Eventually, there will be buffer and ttypair per shell. And a set of win's.
 //
 func (ws *Winslice) Addtyping(ty []byte, p int) {
+	log.Println("Winslice.Addtyping")
 	if p < ws.Offset || p > ws.Offset + len(ws.Typing) {
 		log.Fatalf("p (%d) !in [ws.Offset: %d, ws.Offset + len)\n", p, ws.Offset)
 	}		

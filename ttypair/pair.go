@@ -27,7 +27,6 @@ func New() (*Tty) {
 
 // Returns true if t needs to be treated as a raw tty.
 func (t *Tty) Israw() bool {
-	log.Print("Israw\n")
 	// TODO(rjkroege): Pull in isecho.
 	return (!t.cook || t.password) /* && !isecho(t.fd0) */;
 }
@@ -79,8 +78,9 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 
 // Adds typing to the buffer associated with this pair at position p0.
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
-	log.Print("addtype... do the buffer management\n")
+	log.Println("Tty.addtype")
 	if bytes.Index(typing, []byte{3, 0x7}) != -1 {
+		log.Println("Tty.addtype: resetting")
 		t.Reset()
 	}
 	t.Addtyping(typing, p0)
@@ -89,10 +89,6 @@ func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 // Add typing to the buffer or do a bypass write as necessary
 // TODO(rjkroege): This is not in the right place.
 func (t *Tty) Type(e *acme.Event) {
-	log.Printf("should add the typing to the buffer?\n")
-
-	// what about case where amount added is too large to be in event?
-
 	if e.Nr > 0 {
 		// TODO(rjkroege): Conceivably, I am not shifting the offset enough.
 		t.addtype(e.Text, e.Q0, e.C1 == 'K' /* Verify this test. */)
@@ -104,7 +100,7 @@ func (t *Tty) Type(e *acme.Event) {
 	if t.Israw() {
 		// This deletes the character typed if we have set israw so that
 		// raw mode works properly.
-		log.Printf("unsupported raw mode\n");
+		log.Fatal("unsupported raw mode\n");
 //		n = sprint(buf, "#%d,#%d", e->q0, e->q1);
 //		fswrite(afd, buf, n);
 //		fswrite(dfd, "", 0);
@@ -120,22 +116,29 @@ func (t *Tty) Type(e *acme.Event) {
 // This is sendtype !raw. 
 // TODO(rjkroege): Write sendtype_raw too.
 func (t *Tty) sendtype() {
-	log.Print("write sendtype\n")
-
 	// raw and cooked mode are interleaved. Write cooked mode
 	// aside: we should be removing the typed characters in acme right 
 	// because otherwise the echo will insert them twice... (this block of code)
 
-	typebreaks := bytes.Split(t.Typing, []byte{ '\n', 0x04 })
-	for _,  s := range typebreaks[0:len(typebreaks)-1] {
-		// Skip the last one because it's the text *following* the newline.
+	ty := t.Typing;
+	mutated := false	
+	for p := bytes.IndexAny(ty, "\n\004"); p >= 0; p = bytes.IndexAny(ty, "\n\004") {
+		log.Printf("p: ", p, " ty: ", string(ty))
+		s := ty[0:p+1]
+		log.Printf("Tty sendtype loop: %d <%s>", p, string(s))
 		echoed(s)
 		t.UnbufferedWrite(s)	// Send to the child program
+		t.Move(len(s))
+		mutated = true
+ 		ty = ty[p+1:]
 	}
-	
-	// Does this mean that the store backing it grows indefinitely?
-	// I think yes. I should copy.
-	t.Typing = typebreaks[len(typebreaks)-1]
+
+	// Copy the remaining text to a new slice so that the old backing can
+	// get garbage collected.
+	if (mutated) {
+		t.Typing = make([]byte, len(ty))
+		copy(t.Typing, ty)
+	}
 }
 
 // Inserts the provided buffer into Acme.
