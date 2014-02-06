@@ -56,26 +56,6 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 	return nil
 }
 
-/*
-	In win, the buffer is a window onto the larger Acme window.
-	Much of the complexity is in supporting that `typing` buffer is
-	a small window into a larger buffer.
-
-	I will need a complete buffer to support muxing / autosave.
-
-	Perhaps I should accept this now? The right way is to maintain a
-	parallel buffer and apply edits to it. 
-
-	The low road way is to just re-read the buffer.This can be replaced
-	with something clever where I collect the edits?
-
-	Buffer management is going to go badly with the passwordy stuff.
-	What to do next...
-
-	Let's get it working first in the existing way. I need a buffer class where we
-	accumulate typing
-*/
-
 // Adds typing to the buffer associated with this pair at position p0.
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 	log.Println("Tty.addtype")
@@ -114,7 +94,8 @@ func (t *Tty) Type(e *acme.Event) {
 }
 
 // This is sendtype !raw. 
-// TODO(rjkroege): Write sendtype_raw too.
+// TODO(rjkroege): Write sendtype_raw or modify this function to do raw mode.
+// TODO(rjkroege): this is buffer-oriented. maybe move into winslice?
 func (t *Tty) sendtype() {
 	// raw and cooked mode are interleaved. Write cooked mode
 	// aside: we should be removing the typed characters in acme right 
@@ -123,9 +104,7 @@ func (t *Tty) sendtype() {
 	ty := t.Typing;
 	mutated := false	
 	for p := bytes.IndexAny(ty, "\n\004"); p >= 0; p = bytes.IndexAny(ty, "\n\004") {
-		log.Printf("p: ", p, " ty: ", string(ty))
 		s := ty[0:p+1]
-		log.Printf("Tty sendtype loop: %d <%s>", p, string(s))
 		echoed(s)
 		t.UnbufferedWrite(s)	// Send to the child program
 		t.Move(len(s))
@@ -141,28 +120,8 @@ func (t *Tty) sendtype() {
 	}
 }
 
-// Inserts the provided buffer into Acme.
+// Inserts the provided buffer into Acme from sendtype.
+// TODO(rjkroege): Write echod
 func echoed(s []byte) {
-	// TODO(rjkroege): Write me
-	log.Print("echoing back...\n")
-
-	/*
-		Only one thread can be writing to the acme buffer at
-		a time. The existing win implementation uses a lock.
-		Would I prefer to not be lock based and simply have
-		a single thread that processes a series of messages
-		to update the acme.
-
-		we therefore might have the following threads:
-
-		*  listener for events
-		*  waiting on channel, updates acme
-		*  listener for output from rc
-
-		which obviates the need for locks
-
-		I will use a lock.
-	*/
-	// TODO(rjkroege): I need the win construct.
-	
+	log.Print("echoed")		
 }
