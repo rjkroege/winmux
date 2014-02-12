@@ -52,13 +52,14 @@ func (t *Tty) Setcook(b bool) {
 // command line for the remote shell to execute.
 // TODO(rjkroege): Send the provided buffer off to the child process.
 func (t *Tty) UnbufferedWrite(b []byte) error {
-	log.Println("UnbufferedWrite: ", string(b))
+	log.Printf("UnbufferedWrite: <%s>\n", string(b))
 	return nil
 }
 
 // Adds typing to the buffer associated with this pair at position p0.
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 	log.Println("Tty.addtype")
+	// TODO(rjkroege): Not clear if this is doing the right thing.
 	if bytes.Index(typing, []byte{3, 0x7}) != -1 {
 		log.Println("Tty.addtype: resetting")
 		t.Reset()
@@ -86,7 +87,7 @@ func (t *Tty) Type(e *acme.Event) {
 //		fswrite(dfd, "", 0);
 //		q.p -= e->q1 - e->q0;
 	}
-	t.sendtype()
+	t.Sendtype()
 	if len(e.Text) > 0 && e.Text[len(e.Text) - 1] == '\n' {
 		// Not really clear to me what this is for.
 		t.cook = true;
@@ -96,7 +97,7 @@ func (t *Tty) Type(e *acme.Event) {
 // This is sendtype !raw. 
 // TODO(rjkroege): Write sendtype_raw or modify this function to do raw mode.
 // TODO(rjkroege): this is buffer-oriented. maybe move into winslice?
-func (t *Tty) sendtype() {
+func (t *Tty) Sendtype() {
 	// raw and cooked mode are interleaved. Write cooked mode
 	// aside: we should be removing the typed characters in acme right 
 	// because otherwise the echo will insert them twice... (this block of code)

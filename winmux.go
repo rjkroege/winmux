@@ -58,6 +58,74 @@ func main() {
 }
 
 
+// Equivalent to the original implementation's sende function.
+// Given the event, fetches the event's associated string (embeded, or by read)
+// from the Acme, inserts the text into the Acme, adds the text into the winslice
+// buffer and sends the typing to the client.
+func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
+	_, end := t.Extent()
+	err := q.Win.Fprintf("addr", "#%d", end);
+	if err != nil {
+		goto Error
+	}
+
+	if e.Nr > 0 {
+		_, err = q.Win.Write("data", e.Text)
+		if err != nil {
+			goto Error
+		}
+		t.Addtyping(e.Text, end);
+	} else {
+		log.Fatal("oops! need to write handling for the data isn't in the event\n")
+		// Is there a nice function to do this already? Maybe there could be? It
+		// might be useful?
+		/*
+		m = e->q0;
+		lastc = 0;
+		while(m < e->q1){
+			n = sprint(buf, "#%d", m);
+			fswrite(afd, buf, n);
+			n = fsread(dfd, buf, sizeof buf);
+			nr = nrunes(buf, n);
+			while(m+nr > e->q1){
+				do; while(n>0 && (buf[--n]&0xC0)==0x80);
+				--nr;
+			}
+			if(n == 0)
+				break;
+			l = sprint(abuf, "#%d", end);
+			fswrite(afd, abuf, l);
+			fswrite(dfd, buf, n);
+			addtype(e->c1, ntyper, buf, n, nr);
+			lastc = buf[n-1];
+			m += nr;
+			end += nr;
+		}
+		*/
+	}
+	if(donl && e.Text[len(e.Text)-1] !='\n'){
+		err = q.Win.Fprintf("data", "\n");
+		if err != nil {
+			goto Error
+		}
+		_, end = t.Extent()
+		// TODO(rjkroege): consider doing something smarter about appending.
+		// In particular: Addtyping could have a sibling Appendtyping method.
+		t.Addtyping([]byte{'\n'}, end)
+	}
+	err = q.Win.Fprintf("ctl", "dot=addr")
+	if err != nil {
+		goto Error
+	}
+	t.Sendtype();
+	return
+
+Error:
+	// TODO(rjkroege): Do something structured here. Acme may have gone away.
+	// In general, error handling needs to be made robust.
+	log.Fatal("write error: \n", err.Error())
+}
+
 
 func unknown(e *acme.Event) {
 	log.Printf("unknown message %c%c\n", e.C1, e.C2);
@@ -163,10 +231,20 @@ func acmetowin(q *Q) {
 					t.Setcook(false)
 					break;
 				}
-				// Send stuff to child
-				log.Printf("should send %s to child process\n", e.Text)
-				// Shouldn't this also push the contents to the 
-				// sendtochild(...)
+				log.Printf("should send <%s> to child process\n", e.Text)
+				if (e.Flag & 8 > 0) {
+					if (e.Q1 != e.Q0) {
+						log.Printf("foo1")
+						// func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
+						// sende(q, t, e, false);
+						// sende(q, t, &blank,false);
+					}
+					// sende(q,t, &e3, true);
+				} else {
+					// send something...
+					log.Printf("foo2")					
+					sende(q, t, e, true);
+				}
 			case 'l', 'L':	// button 3, tag or body
 				/* just send it back */
 				q.Win.WriteEvent(e);
