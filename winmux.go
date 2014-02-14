@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"code.google.com/p/goplan9/plan9/acme"
 	"fmt"
+	"github.com/rjkroege/winmux/ttypair"
 	"log"
 	"os"
+	"sync"
+	"unicode/utf8"
 //	"code.google.com/p/goplan9/draw"
 //	"image"
-	"github.com/rjkroege/winmux/ttypair"
-	"sync"
 )
 
 type Q struct {
@@ -64,46 +65,38 @@ func main() {
 // buffer and sends the typing to the client.
 func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
 	_, end := t.Extent()
-	err := q.Win.Fprintf("addr", "#%d", end);
-	if err != nil {
-		goto Error
-	}
+	var err error
+	var lastc rune
 
 	if e.Nr > 0 {
+		err = q.Win.Addr("#%d", end)
 		_, err = q.Win.Write("data", e.Text)
 		if err != nil {
 			goto Error
 		}
+		lastc = rune(e.Text[len(e.Text)-1])
 		t.Addtyping(e.Text, end);
 	} else {
-		log.Fatal("oops! need to write handling for the data isn't in the event\n")
-		// Is there a nice function to do this already? Maybe there could be? It
-		// might be useful?
-		/*
-		m = e->q0;
-		lastc = 0;
-		while(m < e->q1){
-			n = sprint(buf, "#%d", m);
-			fswrite(afd, buf, n);
-			n = fsread(dfd, buf, sizeof buf);
-			nr = nrunes(buf, n);
-			while(m+nr > e->q1){
-				do; while(n>0 && (buf[--n]&0xC0)==0x80);
-				--nr;
+		// TODO(rjkroege): Write a generic helper to pull text out of Plan9
+		buf := make([]byte, 128)
+		nr := 0
+		for m := e.Q0; m < e.Q1; m += nr  {
+			err = q.Win.Addr("#%d", m)
+			nb, err := q.Win.Read("data", buf)
+			nr = utf8.RuneCount(buf)
+			err = q.Win.Addr("#%d", end)
+			_, err = q.Win.Write("data", buf)
+			if err != nil {
+				goto Error
 			}
-			if(n == 0)
-				break;
-			l = sprint(abuf, "#%d", end);
-			fswrite(afd, abuf, l);
-			fswrite(dfd, buf, n);
-			addtype(e->c1, ntyper, buf, n, nr);
-			lastc = buf[n-1];
-			m += nr;
-			end += nr;
+			lastc = rune(buf[nb-1])
+			t.Addtyping(buf, end);
+			m += nr
+			nr += nr
 		}
-		*/
 	}
-	if(donl && e.Text[len(e.Text)-1] !='\n'){
+
+	if(donl &&  lastc !='\n'){
 		err = q.Win.Fprintf("data", "\n");
 		if err != nil {
 			goto Error
@@ -113,6 +106,7 @@ func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
 		// In particular: Addtyping could have a sibling Appendtyping method.
 		t.Addtyping([]byte{'\n'}, end)
 	}
+
 	err = q.Win.Fprintf("ctl", "dot=addr")
 	if err != nil {
 		goto Error
@@ -123,6 +117,8 @@ func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
 Error:
 	// TODO(rjkroege): Do something structured here. Acme may have gone away.
 	// In general, error handling needs to be made robust.
+	// Note that I currently believe that it is safe to only bother with looking at
+	// 
 	log.Fatal("write error: \n", err.Error())
 }
 
@@ -232,13 +228,17 @@ func acmetowin(q *Q) {
 					break;
 				}
 				log.Printf("should send <%s> to child process\n", e.Text)
+				// original e.Flag & 8 case has e3 -> e.Arg, e4 -> e.Loc
 				if (e.Flag & 8 > 0) {
 					if (e.Q1 != e.Q0) {
 						log.Printf("foo1")
 						// func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
 						// sende(q, t, e, false);
+
+						// TODO(rjkroege): I don't understand.
 						// sende(q, t, &blank,false);
 					}
+					// Already in e.Arg but in a different field.
 					// sende(q,t, &e3, true);
 				} else {
 					// send something...
