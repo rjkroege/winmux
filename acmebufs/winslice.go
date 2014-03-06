@@ -16,6 +16,7 @@ package acmebufs
 
 import (
 	"log"
+	"fmt"
 )
 
 // Maintains a slice of an underlying acme buffer
@@ -62,7 +63,7 @@ func (ws *Winslice) Reset() {
 func (ws *Winslice) Addtyping(ty []byte, p int) {
 	log.Println("Winslice.Addtyping")
 	if p < ws.Offset || p > ws.Offset + len(ws.Typing) {
-		log.Fatalf("p (%d) !in [ws.Offset: %d, ws.Offset + len)\n", p, ws.Offset)
+		panic(fmt.Sprintf("p (%d) !in [ws.Offset: %d, ws.Offset + len)", p, ws.Offset))
 	}		
 
 	p = p - ws.Offset
