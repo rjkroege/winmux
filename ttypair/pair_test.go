@@ -3,6 +3,7 @@ package ttypair
 import (
 	"github.com/rjkroege/wikitools/testhelpers"
 	"testing"
+	"code.google.com/p/goplan9/plan9/acme"
 )
 
 func Test_Israw(t *testing.T) {
@@ -81,3 +82,28 @@ func Test_SendtypeMultiblock(t *testing.T) {
 	testhelpers.AssertString(t, "bye", string(tp.Typing))
 }
 
+func Test_Type(t *testing.T) {
+	tp := New()
+	mock := &mockttyfd{make([][]byte, 0, 10)}
+	tp.fd = mock
+
+	e := &acme.Event{Nr:len("hello"), Text: []byte("hello")}
+	tp.Type(e)
+
+	testhelpers.AssertString(t, "hello", string(tp.Typing))
+}
+
+func Test_TypeCook(t *testing.T) {
+	tp := New()
+	mock := &mockttyfd{make([][]byte, 0, 10)}
+	tp.fd = mock
+
+	s := "hello\n"
+	e := &acme.Event{Nr:len(s), Text: []byte(s)}
+	tp.Type(e)
+
+	testhelpers.AssertInt(t, 1, len(mock.writes))
+	testhelpers.AssertString(t, "hello\n", string(mock.writes[0]))
+	testhelpers.AssertString(t, "", string(tp.Typing))
+	testhelpers.AssertBool(t, true, tp.cook)
+}
