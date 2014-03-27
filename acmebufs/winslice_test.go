@@ -57,14 +57,14 @@ func Test_Addtyping(t *testing.T) {
 
 	ws.Addtyping([]byte{'Y'}, 3)
 	testhelpers.AssertString(t, "XYabc", ws.String())
-	
+
 }
 
 func Test_Reset(t *testing.T) {
 	ws := New()
 	ws.Move(2)
 	ws.Addtyping([]byte{'b'}, 2)
-	
+
 	ws.Reset()
 	testhelpers.AssertString(t, "", ws.String())
 }
@@ -76,7 +76,7 @@ func Test_Addtyping_BeforePanic(t *testing.T) {
 	defer func() {
 		if e := recover(); e != nil {
 			s := e.(string)
-			testhelpers.AssertString(t, "p (0) !in [ws.Offset: 2, ws.Offset + len)", s)
+			testhelpers.AssertString(t, "p (0) !in [ws.Offset: 2, ws.Offset + len: 2)", s)
 		} else {
 			t.Fail()
 		}
@@ -92,11 +92,11 @@ func Test_Addtyping_AfterPanic(t *testing.T) {
 	defer func() {
 		if e := recover(); e != nil {
 			s := e.(string)
-			testhelpers.AssertString(t, "p (3) !in [ws.Offset: 2, ws.Offset + len)", s)
+			testhelpers.AssertString(t, "p (3) !in [ws.Offset: 2, ws.Offset + len: 2)", s)
 		} else {
 			t.Fail()
 		}
 	}()
-	
+
 	ws.Addtyping([]byte{'c'}, 3)
 }

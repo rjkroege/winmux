@@ -2,33 +2,40 @@
 	Manages a tty pair.
 */
 
-
 package ttypair
 
 import (
 	// TODO(rjkroege): suck in the bsd pty
 	"bytes"
-	"log"
 	"code.google.com/p/goplan9/plan9/acme"
 	"github.com/rjkroege/winmux/acmebufs"
+	"log"
 )
 
-type Tty struct  {
+type Ttyfd interface {
+	UnbufferedWrite(b []byte) error
+	// TODO(rjkroege): Write me
+	// Isecho() bool
+}
+
+type Tty struct {
 	acmebufs.Winslice
-	cook bool
+	cook     bool
 	password bool
-	fd0 int	
+	fd       Ttyfd
 }
 
 // Creates a Tty object
-func New() (*Tty) {
-	return &Tty{cook: true, password: false, fd0: -1}
+func New() *Tty {
+	tty := &Tty{cook: true, password: false, fd: nil}
+	tty.fd = tty
+	return tty
 }
 
 // Returns true if t needs to be treated as a raw tty.
 func (t *Tty) Israw() bool {
 	// TODO(rjkroege): Pull in isecho.
-	return (!t.cook || t.password) /* && !isecho(t.fd0) */;
+	return (!t.cook || t.password) /* && !isecho(t.fd0) */
 }
 
 // Deletes characters from the buffer etc
@@ -43,7 +50,7 @@ func (t *Tty) Sendbs(n int) {
 }
 
 func (t *Tty) Setcook(b bool) {
-	t.cook = b;
+	t.cook = b
 	log.Printf("Setcook to %b\n", b)
 }
 
@@ -59,10 +66,10 @@ func (t *Tty) UnbufferedWrite(b []byte) error {
 // Adds typing to the buffer associated with this pair at position p0.
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
 	log.Println("Tty.addtype")
-	// TODO(rjkroege): Not clear if this is doing the right thing.
-	if bytes.Index(typing, []byte{3, 0x7}) != -1 {
+	if fromkeyboard && bytes.IndexAny(typing, "\003\007") != -1 {
 		log.Println("Tty.addtype: resetting")
 		t.Reset()
+		return
 	}
 	t.Addtyping(typing, p0)
 }
@@ -81,41 +88,41 @@ func (t *Tty) Type(e *acme.Event) {
 	if t.Israw() {
 		// This deletes the character typed if we have set israw so that
 		// raw mode works properly.
-		log.Fatal("unsupported raw mode\n");
-//		n = sprint(buf, "#%d,#%d", e->q0, e->q1);
-//		fswrite(afd, buf, n);
-//		fswrite(dfd, "", 0);
-//		q.p -= e->q1 - e->q0;
+		log.Fatal("unsupported raw mode\n")
+		//		n = sprint(buf, "#%d,#%d", e->q0, e->q1);
+		//		fswrite(afd, buf, n);
+		//		fswrite(dfd, "", 0);
+		//		q.p -= e->q1 - e->q0;
 	}
 	t.Sendtype()
-	if len(e.Text) > 0 && e.Text[len(e.Text) - 1] == '\n' {
+	if len(e.Text) > 0 && e.Text[len(e.Text)-1] == '\n' {
 		// Not really clear to me what this is for.
-		t.cook = true;
+		t.cook = true
 	}
 }
 
-// This is sendtype !raw. 
+// This is sendtype !raw.
 // TODO(rjkroege): Write sendtype_raw or modify this function to do raw mode.
 // TODO(rjkroege): this is buffer-oriented. maybe move into winslice?
 func (t *Tty) Sendtype() {
 	// raw and cooked mode are interleaved. Write cooked mode
-	// aside: we should be removing the typed characters in acme right 
+	// aside: we should be removing the typed characters in acme right
 	// because otherwise the echo will insert them twice... (this block of code)
 
-	ty := t.Typing;
-	mutated := false	
+	ty := t.Typing
+	mutated := false
 	for p := bytes.IndexAny(ty, "\n\004"); p >= 0; p = bytes.IndexAny(ty, "\n\004") {
-		s := ty[0:p+1]
+		s := ty[0 : p+1]
 		echoed(s)
-		t.UnbufferedWrite(s)	// Send to the child program
+		t.fd.UnbufferedWrite(s) // Send to the child program
 		t.Move(len(s))
 		mutated = true
- 		ty = ty[p+1:]
+		ty = ty[p+1:]
 	}
 
 	// Copy the remaining text to a new slice so that the old backing can
 	// get garbage collected.
-	if (mutated) {
+	if mutated {
 		t.Typing = make([]byte, len(ty))
 		copy(t.Typing, ty)
 	}
@@ -124,5 +131,5 @@ func (t *Tty) Sendtype() {
 // Inserts the provided buffer into Acme from sendtype.
 // TODO(rjkroege): Write echod
 func echoed(s []byte) {
-	log.Print("echoed")		
+	log.Print("echoed")
 }

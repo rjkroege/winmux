@@ -15,27 +15,27 @@
 package acmebufs
 
 import (
-	"log"
 	"fmt"
+	"log"
 )
 
 // Maintains a slice of an underlying acme buffer
 type Winslice struct {
 	// Called p
-	Offset int				// Offset of Typing into an associated Acme win
-	Typing []byte			// UTF8 slice of Acme buffer
+	Offset int    // Offset of Typing into an associated Acme win
+	Typing []byte // UTF8 slice of Acme buffer
 }
 
 func (ws *Winslice) String() string {
 	return string(ws.Typing)
 }
 
-func New() (*Winslice) {
-	return &Winslice{0, make([]byte, 0)}	
+func New() *Winslice {
+	return &Winslice{0, make([]byte, 0)}
 }
 
 // Resets the winslice to no longer contain text.
-// TODO(rjkroege): Make sure that this is right. In particular, 
+// TODO(rjkroege): Make sure that this is right. In particular,
 // that we don't toss the offset.
 func (ws *Winslice) Reset() {
 	ws.Typing = ws.Typing[0:0]
@@ -62,9 +62,9 @@ func (ws *Winslice) Reset() {
 //
 func (ws *Winslice) Addtyping(ty []byte, p int) {
 	log.Println("Winslice.Addtyping")
-	if p < ws.Offset || p > ws.Offset + len(ws.Typing) {
-		panic(fmt.Sprintf("p (%d) !in [ws.Offset: %d, ws.Offset + len)", p, ws.Offset))
-	}		
+	if p < ws.Offset || p > ws.Offset+len(ws.Typing) {
+		panic(fmt.Sprintf("p (%d) !in [ws.Offset: %d, ws.Offset + len: %d)", p, ws.Offset, ws.Offset + len(ws.Typing)))
+	}
 
 	p = p - ws.Offset
 	h := ws.Typing[0:p]
@@ -82,7 +82,7 @@ func (ws *Winslice) Addtyping(ty []byte, p int) {
 // as I understand the code better. It might have to chop the
 // front off the typing.
 func (ws *Winslice) Move(p int) {
-	ws.Offset += p	
+	ws.Offset += p
 }
 
 // Is the provided position q0 in the Acme buffer before the start of
@@ -94,18 +94,18 @@ func (ws *Winslice) Beforeslice(q0 int) bool {
 
 // Returns true if the given address is within the slice.
 func (ws *Winslice) Inslice(q0 int) bool {
-	return q0 <= ws.Offset + len(ws.Typing)
+	return q0 <= ws.Offset+len(ws.Typing)
 }
 
 // Returns true if the given position is at the end or beyond the
-// the slice. 
+// the slice.
 // I think. It's not quite clear what this is testing...
 func (ws *Winslice) Afterslice(q0, n int) bool {
-	return q0 >= ws.Offset + n
+	return q0 >= ws.Offset+n
 }
 
 func (ws *Winslice) Ntyper() int {
-	return  len(ws.Typing)
+	return len(ws.Typing)
 }
 
 // Use this for logging.
