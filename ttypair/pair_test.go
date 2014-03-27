@@ -1,9 +1,9 @@
 package ttypair
 
 import (
+	"code.google.com/p/goplan9/plan9/acme"
 	"github.com/rjkroege/wikitools/testhelpers"
 	"testing"
-	"code.google.com/p/goplan9/plan9/acme"
 )
 
 func Test_Israw(t *testing.T) {
@@ -26,10 +26,9 @@ func (mt *mockttyfd) UnbufferedWrite(b []byte) error {
 	return nil
 }
 
-
 func Test_addtype(t *testing.T) {
 	tp := New()
-	
+
 	tp.addtype([]byte("hello"), 0, false)
 	testhelpers.AssertString(t, "hello", tp.String())
 
@@ -53,7 +52,7 @@ func Test_Sendtype(t *testing.T) {
 
 	testhelpers.AssertInt(t, 1, len(mock.writes))
 	testhelpers.AssertString(t, "hello\n", string(mock.writes[0]))
-	testhelpers.AssertString(t, "bye", string( tp.Typing))
+	testhelpers.AssertString(t, "bye", string(tp.Typing))
 }
 
 func Test_SendtypeOnechar(t *testing.T) {
@@ -87,7 +86,7 @@ func Test_Type(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
 	tp.fd = mock
 
-	e := &acme.Event{Nr:len("hello"), Text: []byte("hello")}
+	e := &acme.Event{Nr: len("hello"), Text: []byte("hello")}
 	tp.Type(e)
 
 	testhelpers.AssertString(t, "hello", string(tp.Typing))
@@ -99,7 +98,7 @@ func Test_TypeCook(t *testing.T) {
 	tp.fd = mock
 
 	s := "hello\n"
-	e := &acme.Event{Nr:len(s), Text: []byte(s)}
+	e := &acme.Event{Nr: len(s), Text: []byte(s)}
 	tp.Type(e)
 
 	testhelpers.AssertInt(t, 1, len(mock.writes))
