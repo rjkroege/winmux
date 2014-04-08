@@ -12,11 +12,16 @@ import (
 	"fmt"
 	"github.com/rjkroege/winmux/ttypair"
 	"log"
-	"os"
+//	"os"
 	"sync"
 	"unicode/utf8"
 	//	"code.google.com/p/goplan9/draw"
 	//	"image"
+	"flag"
+	"github.com/kr/pty"
+	"os/exec"
+	"os"
+	"io"
 )
 
 type Q struct {
@@ -28,31 +33,59 @@ type Q struct {
 func main() {
 	fmt.Print("hello from winmux\n")
 
-	log.Print("hello!")
+//	log.Print("hello!")
 
 	// take a window id from the command line
 	// I suppose it could come from the environment too
 
-	log.Print(os.Args[0])
+//	log.Print(os.Args[0])
 
 	var q Q
 	var err error
 
+
+	// Actually make this correspond to the real syntax.
+	var window_id = flag.Int("id", -1, "Acme window id")
+	var window_name = flag.String("name", "", "Acme window name")
+	flag.Parse()
+	
+	
+		
+	cmd := "/usr/local/plan9/bin/rc"
+	// cmd := "/usr/local/plan9/bin/cat"	// Safer for now.
+	if args := flag.Args(); len(args) == 1 {
+		cmd = args[0]
+	} else if len(args) > 1 {
+		log.Fatal(usage)
+	}
+
 	// TODO(rjkroege): look up a window by name if an argument is provided
 	// and connect to it.
-	if len(os.Args) > 1 {
-		log.Fatal("write some code to lookup window by name and connect")
-	} else {
+	// Hunt down an acme window 
+	log.Printf("asked for window %s\n", *window_name)
+	if *window_id == -1 {
 		q.Win, err = acme.New()
-	}
+	} /* else open the named window. */
 	if err != nil {
 		log.Fatal("can't open the window? ", err.Error())
 	}
 
+	q.Win.Name("winmux-%s", cmd)
 	q.Win.Fprintf("body", "hi rob\n")
-	acmetowin(&q)
 
 	// TODO(rjkroege): start the function that receives from the pty and inserts into acme
+	c := exec.Command(cmd)
+	f, err := pty.Start(c)
+	if err != nil {
+		log.Fatalf("failed to start pty up: %s", err.Error())
+	}
+
+	// A goroutine to read the output
+	go func() {
+		io.Copy(os.Stdout, f)
+	}()
+
+	acmetowin(&q, f)
 
 	q.Win.CloseFiles()
 	fmt.Print("bye\n")
@@ -128,11 +161,12 @@ func unknown(e *acme.Event) {
 // Replicates the functionality of the stdinproc in win.c
 // Reads the event stream from acme, updates the window and
 // echos the received content.
-func acmetowin(q *Q) {
+func acmetowin(q *Q, f io.Writer) {
 	debug := true
 
+	// TODO(rjkroege): This needs to be 
 	// this needs to be adjustable as I change buffers. could destroy/reconnect?
-	t := ttypair.New()
+	t := ttypair.New(f)
 
 	// TODO(rjkroege): extract the initial value of Offset from the Acme buffer.
 	// TODO(rjkroege): verify the correctness of this position.
@@ -184,7 +218,7 @@ func acmetowin(q *Q) {
 					//					fswrite(datafd, "", 0);
 					//					buf[0] = 0x7F;
 					// ship DEL off to child.
-					t.UnbufferedWrite([]byte{0x7F})
+					f.Write([]byte{0x7F})
 				case t.Beforeslice(e.Q0):
 					// Inserting before the final line. Doesn't affect the last line.
 					if debug {
