@@ -10,25 +10,28 @@ import (
 	"code.google.com/p/goplan9/plan9/acme"
 	"github.com/rjkroege/winmux/acmebufs"
 	"log"
+	"io"
 )
 
+/*
 type Ttyfd interface {
-	UnbufferedWrite(b []byte) error
+	Write(b []byte) error
 	// TODO(rjkroege): Write me
 	// Isecho() bool
 }
+*/
 
 type Tty struct {
 	acmebufs.Winslice
 	cook     bool
 	password bool
-	fd       Ttyfd
+	fd       io.Writer
 }
 
 // Creates a Tty object
-func New() *Tty {
+func New(fd io.Writer) *Tty {
 	tty := &Tty{cook: true, password: false, fd: nil}
-	tty.fd = tty
+	tty.fd = fd
 	return tty
 }
 
@@ -58,8 +61,8 @@ func (t *Tty) Setcook(b bool) {
 // Either a single delete character to stop the remote or a single
 // command line for the remote shell to execute.
 // TODO(rjkroege): Send the provided buffer off to the child process.
-func (t *Tty) UnbufferedWrite(b []byte) error {
-	log.Printf("UnbufferedWrite: <%s>\n", string(b))
+func (t *Tty) Write(b []byte) error {
+	log.Printf("Write: <%s>\n", string(b))
 	return nil
 }
 
@@ -114,7 +117,7 @@ func (t *Tty) Sendtype() {
 	for p := bytes.IndexAny(ty, "\n\004"); p >= 0; p = bytes.IndexAny(ty, "\n\004") {
 		s := ty[0 : p+1]
 		echoed(s)
-		t.fd.UnbufferedWrite(s) // Send to the child program
+		t.fd.Write(s) // Send to the child program
 		t.Move(len(s))
 		mutated = true
 		ty = ty[p+1:]
