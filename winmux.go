@@ -20,7 +20,7 @@ import (
 	"flag"
 	"github.com/kr/pty"
 	"os/exec"
-	"os"
+//	"os"
 	"io"
 )
 
@@ -80,12 +80,18 @@ func main() {
 		log.Fatalf("failed to start pty up: %s", err.Error())
 	}
 
-	// A goroutine to read the output
-	go func() {
-		io.Copy(os.Stdout, f)
-	}()
+	echo := ttypair.Makecho()
 
-	acmetowin(&q, f)
+	// A goroutine to read the output
+	 go childtoacme(&q, f, echo)
+	//go func() {
+	//	io.Copy(os.Stdout, f)
+	//}()
+	// go childtoacme2(&q, f)
+
+
+	// Read from the acme and send to child. (Rename?)
+	acmetowin(&q, f, echo)
 
 	q.Win.CloseFiles()
 	fmt.Print("bye\n")
@@ -161,12 +167,12 @@ func unknown(e *acme.Event) {
 // Replicates the functionality of the stdinproc in win.c
 // Reads the event stream from acme, updates the window and
 // echos the received content.
-func acmetowin(q *Q, f io.Writer) {
-	debug := true
+func acmetowin(q *Q, f io.Writer, e *ttypair.Echo) {
+	debug := false
 
 	// TODO(rjkroege): This needs to be 
 	// this needs to be adjustable as I change buffers. could destroy/reconnect?
-	t := ttypair.New(f)
+	t := ttypair.New(f, e)
 
 	// TODO(rjkroege): extract the initial value of Offset from the Acme buffer.
 	// TODO(rjkroege): verify the correctness of this position.
@@ -262,7 +268,7 @@ func acmetowin(q *Q, f io.Writer) {
 				// original e.Flag & 8 case has e3 -> e.Arg, e4 -> e.Loc
 				if e.Flag&8 > 0 {
 					if e.Q1 != e.Q0 {
-						log.Printf("foo1")
+						// log.Printf("foo1")
 						// func sende(q *Q, t *ttypair.Tty, e *acme.Event, donl bool) {
 						// sende(q, t, e, false);
 
@@ -273,7 +279,7 @@ func acmetowin(q *Q, f io.Writer) {
 					// sende(q,t, &e3, true);
 				} else {
 					// send something...
-					log.Printf("foo2")
+					// log.Printf("foo2")
 					sende(q, t, e, true)
 				}
 			case 'l', 'L': // button 3, tag or body

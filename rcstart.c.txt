@@ -117,6 +117,17 @@ struct {
 	int r, w;
 } echo;
 
+// shoves the input string into a buffer so that
+// we can compare it later with the response from
+// the child process and discard the echo provided
+// by the child process as this has already been inserted
+// into the acme buffer.
+//
+// for us, had we captured the whole buffer, it would
+// suffice to simply record a slice corresponding to the
+// string shipped to the child. then, we simply compare
+// the given string with what is returned.
+// 
 void
 echoed(char *p, int n)
 {
@@ -135,6 +146,10 @@ echoed(char *p, int n)
 	unlock(&echo.l);
 }
 
+// compare the given string that has come from the child
+// process with the previously recorded string sent to the
+// child process and delete characters that are part of 
+// what we have echoed
 int
 echocancel(char *p, int n)
 {

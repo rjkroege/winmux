@@ -7,7 +7,7 @@ import (
 )
 
 func Test_Israw(t *testing.T) {
-	tp := New(new(mockttyfd))
+	tp := New(new(mockttyfd), Makecho())
 	testhelpers.AssertBool(t, false, tp.Israw())
 
 	tp.Setcook(false)
@@ -27,7 +27,7 @@ func (mt *mockttyfd) Write(b []byte) (int, error) {
 }
 
 func Test_addtype(t *testing.T) {
-	tp := New(new(mockttyfd))
+	tp := New(new(mockttyfd), Makecho())
 
 	tp.addtype([]byte("hello"), 0, false)
 	testhelpers.AssertString(t, "hello", tp.String())
@@ -44,7 +44,7 @@ func Test_addtype(t *testing.T) {
 
 func Test_Sendtype(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
-	tp := New(mock)
+	tp := New(mock, Makecho())
 
 	tp.addtype([]byte("hello\nbye"), 0, false)
 	tp.Sendtype()
@@ -56,7 +56,7 @@ func Test_Sendtype(t *testing.T) {
 
 func Test_SendtypeOnechar(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
-	tp := New(mock)
+	tp := New(mock, Makecho())
 
 	tp.addtype([]byte("h"), 0, true)
 	tp.Sendtype()
@@ -67,7 +67,7 @@ func Test_SendtypeOnechar(t *testing.T) {
 
 func Test_SendtypeMultiblock(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
-	tp := New(mock)
+	tp := New(mock, Makecho())
 
 	tp.addtype([]byte("hello\nworld\nbye"), 0, true)
 	tp.Sendtype()
@@ -80,7 +80,7 @@ func Test_SendtypeMultiblock(t *testing.T) {
 
 func Test_Type(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
-	tp := New(mock)
+	tp := New(mock, Makecho())
 
 	e := &acme.Event{Nr: len("hello"), Text: []byte("hello")}
 	tp.Type(e)
@@ -90,7 +90,7 @@ func Test_Type(t *testing.T) {
 
 func Test_TypeCook(t *testing.T) {
 	mock := &mockttyfd{make([][]byte, 0, 10)}
-	tp := New(mock)
+	tp := New(mock, Makecho())
 
 	s := "hello\n"
 	e := &acme.Event{Nr: len(s), Text: []byte(s)}

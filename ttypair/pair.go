@@ -5,33 +5,32 @@
 package ttypair
 
 import (
-	// TODO(rjkroege): suck in the bsd pty
 	"bytes"
 	"code.google.com/p/goplan9/plan9/acme"
 	"github.com/rjkroege/winmux/acmebufs"
-	"log"
 	"io"
+	"log"
 )
 
-/*
-type Ttyfd interface {
-	Write(b []byte) error
-	// TODO(rjkroege): Write me
-	// Isecho() bool
-}
-*/
+//type Ttyfd interface {
+//	Write(b []byte) error
+//	// TODO(rjkroege): Write me
+//	// Isecho() bool
+//}
 
 type Tty struct {
 	acmebufs.Winslice
 	cook     bool
 	password bool
 	fd       io.Writer
+	echo *Echo
 }
 
 // Creates a Tty object
-func New(fd io.Writer) *Tty {
+func New(fd io.Writer, e *Echo) *Tty {
 	tty := &Tty{cook: true, password: false, fd: nil}
 	tty.fd = fd
+	tty.echo = e
 	return tty
 }
 
@@ -61,14 +60,14 @@ func (t *Tty) Setcook(b bool) {
 // Either a single delete character to stop the remote or a single
 // command line for the remote shell to execute.
 // TODO(rjkroege): Send the provided buffer off to the child process.
-func (t *Tty) Write(b []byte) error {
-	log.Printf("Write: <%s>\n", string(b))
-	return nil
-}
+//func (t *Tty) Write(b []byte) error {
+//	log.Printf("Write: <%s>\n", string(b))
+//	return nil
+//}
 
 // Adds typing to the buffer associated with this pair at position p0.
 func (t *Tty) addtype(typing []byte, p0 int, fromkeyboard bool) {
-	log.Println("Tty.addtype")
+	// log.Println("Tty.addtype")
 	if fromkeyboard && bytes.IndexAny(typing, "\003\007") != -1 {
 		log.Println("Tty.addtype: resetting")
 		t.Reset()
@@ -116,7 +115,7 @@ func (t *Tty) Sendtype() {
 	mutated := false
 	for p := bytes.IndexAny(ty, "\n\004"); p >= 0; p = bytes.IndexAny(ty, "\n\004") {
 		s := ty[0 : p+1]
-		echoed(s)
+		t.echo.echoed(s)
 		t.fd.Write(s) // Send to the child program
 		t.Move(len(s))
 		mutated = true
@@ -131,8 +130,4 @@ func (t *Tty) Sendtype() {
 	}
 }
 
-// Inserts the provided buffer into Acme from sendtype.
-// TODO(rjkroege): Write echod
-func echoed(s []byte) {
-	log.Print("echoed")
-}
+
