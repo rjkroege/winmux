@@ -7,6 +7,7 @@ import (
 //	"code.google.com/p/goplan9/plan9/acme"
 //	"fmt"
 	"github.com/rjkroege/winmux/ttypair"
+	"github.com/rjkroege/winmux/filter"
 	"log"
 //	"os"
 //	"sync"
@@ -50,6 +51,12 @@ func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 		b := buf[0:nr]
 
 		buf = echo.Cancel(buf)
+		if len(buf) == 0 {
+			continue;
+		}
+
+		// TODO(rjkroege): Convert this function
+		buf = filter.Dropcrnl(buf);
 		if len(buf) == 0 {
 			continue;
 		}
