@@ -28,6 +28,7 @@ type Q struct {
 	// p int
 	Win *acme.Win
 	sync.Mutex
+	Tty *ttypair.Tty
 }
 
 func main() {
@@ -81,14 +82,10 @@ func main() {
 	}
 
 	echo := ttypair.Makecho()
+	q.Tty = ttypair.New(f, echo)
 
 	// A goroutine to read the output
 	 go childtoacme(&q, f, echo)
-	//go func() {
-	//	io.Copy(os.Stdout, f)
-	//}()
-	// go childtoacme2(&q, f)
-
 
 	// Read from the acme and send to child. (Rename?)
 	acmetowin(&q, f, echo)
@@ -172,7 +169,8 @@ func acmetowin(q *Q, f io.Writer, e *ttypair.Echo) {
 
 	// TODO(rjkroege): This needs to be 
 	// this needs to be adjustable as I change buffers. could destroy/reconnect?
-	t := ttypair.New(f, e)
+	// Some refactoring needed...
+	t := q.Tty
 
 	// TODO(rjkroege): extract the initial value of Offset from the Acme buffer.
 	// TODO(rjkroege): verify the correctness of this position.
