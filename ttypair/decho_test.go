@@ -41,17 +41,17 @@ func Test_Cancel_Subword(t *testing.T) {
 	echo := Makecho()
 	echo.echoed([]byte("hello\n"))
 
-	s := []byte("hello\rworld")
+	s := []byte("hello\r\nworld")
 	r := echo.Cancel(s)
 	testhelpers.AssertString(t, "world", string(r))
 	if echo.oldest != nil {
-		t.Error("Test_Cancel_Subword: failed to reset oldest")
+		t.Errorf("Test_Cancel_Subword: failed to reset oldest: <%s>", string(echo.oldest))
 	}
 }
 
 func Test_Cancel_Backspace(t *testing.T) {
 	echo := Makecho()
-	echo.echoed([]byte("helloXXXworld"))
+	echo.echoed([]byte("helloworld"))
 
 	s := []byte("hello\x08 \x08worldyay")
 	r := echo.Cancel(s)
@@ -71,4 +71,13 @@ func Test_Cancel_CharacterChange(t *testing.T) {
 	if echo.oldest != nil {
 		t.Error("Test_Cancel_Subword: failed to reset oldest: ", string(echo.oldest))
 	}
+}
+
+func Test_Cancel_Terminating_NL_Not_Cancelled(t *testing.T) {
+	echo := Makecho()
+	echo.echoed([]byte("ls\n"))
+
+	s := []byte("ls\r\n")
+	r := echo.Cancel(s)
+	testhelpers.AssertString(t, "", string(r))
 }

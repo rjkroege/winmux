@@ -40,9 +40,12 @@ func (e *Echo) Cancel(p []byte) []byte {
 	}
 
 	if e.oldest != nil {
-		var i int
-		for i = 0; i < len(p) && i < len(e.oldest); i++ {
-			if e.oldest[i] == p[i] || e.oldest[i] == '\n' && p[i] == '\r' {
+		var i, j int
+		for i, j = 0, 0; i < len(p) && j < len(e.oldest); i++ {
+			if e.oldest[j] == p[i] {
+				j++
+				continue
+			} else if e.oldest[j] == '\n' && p[i] == '\r' {
 				continue
 			} else if (p[i] == 0x08) {
 				if i+2 <= len(p) && p[i+1] == ' ' && p[i+2] == 0x08 {
@@ -53,10 +56,10 @@ func (e *Echo) Cancel(p []byte) []byte {
 			break
 		}
 		p = p[i:]
-		if len(e.oldest[i:]) == 0 {
+		if len(e.oldest[j:]) == 0 {
 			e.oldest = nil						
 		} else {
-			e.oldest = e.oldest[i:]
+			e.oldest = e.oldest[j:]
 		}
 	}
 	return p

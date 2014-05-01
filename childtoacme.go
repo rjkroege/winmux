@@ -3,7 +3,7 @@ package main
 // TODO(rjk): Move this to its own package.
 
 import (
-//	"bytes"
+	"bytes"
 //	"code.google.com/p/goplan9/plan9/acme"
 //	"fmt"
 	"github.com/rjkroege/winmux/ttypair"
@@ -19,6 +19,12 @@ import (
 //	"os/exec"
 	"io"
 )
+
+// definitely not intrusive
+func logenhancer(ob []byte) string {
+	return string(bytes.Replace(ob, []byte{'\r', '\n'}, []byte{'¬'}, -1))
+}
+
 
 func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 	fbuf := make([]byte, 8192 + utf8.UTFMax+1)
@@ -38,7 +44,7 @@ func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 		}
 
 		// Debugging. Remove this eventually.
-		log.Printf("the buffer: <<%s>>", string(buf[0:nr]))
+		log.Printf("the buffer: <<%s>>", logenhancer(buf[0:nr]))
 
 		b := buf[0:nr]
 		b = echo.Cancel(b)
