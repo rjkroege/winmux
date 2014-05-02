@@ -90,7 +90,9 @@ func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 		// TODO(rjk): handle label operations here.
 		b, label := filter.Labelcommand(b)
 		if label != nil {
-			q.Win.Name(string(label))
+			if err := q.Win.Name(string(label)); err != nil {
+				log.Fatalf("we couldn't handle writing to acme: %s\n", err.Error())
+			}
 		}
 
 		// TODO(rjk): detect if we have a password prompt, set password true
