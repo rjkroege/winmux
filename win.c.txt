@@ -624,6 +624,12 @@ label(char *sr, int n)
 {
 	char *sl, *el, *er, *r, *p;
 
+	// find the end of the label command in the buffer.
+	// what happens if the label command is split across reads?
+	// give up if no label command end in the buffer
+	
+	// el is the first text after the label buffer
+
 	er = sr+n;
 	for(r=er-1; r>=sr; r--)
 		if(*r == '\007')
@@ -634,16 +640,22 @@ label(char *sr, int n)
 	el = r+1;
 	if(el-sr > sizeof wdir - strlen(name) - 20)
 		sr = el - sizeof wdir - strlen(name) - 20;
+
+	// search backwards for the start of a label command in buffer from
+	// where we found the terminator token.
 	for(sl=el-3; sl>=sr; sl--)
 		if(sl[0]=='\033' && sl[1]==']' && sl[2]==';')
 			break;
 	if(sl < sr)
 		return n;
 
+	// sl points to the beginning of the label block
+
 	*r = 0;
+	// if whole argument to label does not consist of 9term-hold+
 	if(strcmp(sl+3, "*9term-hold+") != 0) {
 		/*
-		 * add /-sysname if not present
+		 * add /-sysname if not present (nope!) adds /-<path>
 		 */
 		snprint(wdir, sizeof wdir, "name %s", sl+3);
 		p = strrchr(wdir, '/');
@@ -652,12 +664,14 @@ label(char *sr, int n)
 			if(*(p-1) != '/')
 				*p++ = '/';
 			*p++ = '-';
-			strcpy(p, name);
+			strcpy(p, l);
 		}
 		strcat(wdir, "\n0\n");
 		fswrite(ctlfd, wdir, strlen(wdir));
 	}
-
+	
+	// chop the label command out of the provided buffer
+	// by shifting chunk down.
 	memmove(sl, el, er-el);
 	n -= (el-sl);
 	return n;

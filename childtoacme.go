@@ -3,7 +3,7 @@ package main
 // TODO(rjk): Move this to its own package.
 
 import (
-	"bytes"
+//	"bytes"
 //	"code.google.com/p/goplan9/plan9/acme"
 //	"fmt"
 	"github.com/rjkroege/winmux/ttypair"
@@ -20,9 +20,28 @@ import (
 	"io"
 )
 
-// definitely not intrusive
-func logenhancer(ob []byte) string {
-	return string(bytes.Replace(ob, []byte{'\r', '\n'}, []byte{'¬'}, -1))
+// Must not modify buffer b.
+func enhancedlog(b []byte) {
+
+	// display all characters, including control characters.
+	nb := make([]byte, len(b))
+
+	// Remember that len(rune) != len(byte). Silly boy.	
+	for _, r := range(string(b)) {
+		switch r {
+		case '\r':
+			// stuff that doesn't work...
+			nb = append(nb, "\\r"...)
+		case '\033':
+			nb = append(nb, "\\033"...)
+		case '\007':
+			nb = append(nb, "\\007"...)
+		default:
+			nb = append(nb, string(r)...)
+		}
+	}
+
+	log.Printf("buf: <%s>", string(nb))
 }
 
 
@@ -43,8 +62,8 @@ func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 			continue
 		}
 
-		// Debugging. Remove this eventually.
-		log.Printf("the buffer: <<%s>>", logenhancer(buf[0:nr]))
+		enhancedlog(buf[0:nr])
+		// log.Printf("the buffer: <<%s>>", logenhancer(buf[0:nr]))
 
 		b := buf[0:nr]
 		b = echo.Cancel(b)
@@ -67,7 +86,13 @@ func childtoacme(q *Q, fd io.Reader, echo *ttypair.Echo) {
 		if len(r) != 0 {
 			log.Printf("Runmodulus had a remnant....\n")
 		}
-	
+
+		// TODO(rjk): handle label operations here.
+		b, label := filter.Labelcommand(b)
+		if label != nil {
+			q.Win.Name(string(label))
+		}
+
 		// TODO(rjk): detect if we have a password prompt, set password true
 		// to suppress echo.
 		// note need to plumb the call to the ttypair...
