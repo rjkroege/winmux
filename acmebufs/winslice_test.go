@@ -100,3 +100,76 @@ func Test_Addtyping_AfterPanic(t *testing.T) {
 
 	ws.Addtyping([]byte{'c'}, 3)
 }
+
+
+func Test_Delete_to_empty(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+	ws.Addtyping([]byte{'a'}, 2)
+
+	n := ws.Delete(2, 3)
+	testhelpers.AssertString(t, "", ws.String())
+	testhelpers.AssertInt(t, 0, n)
+}
+
+func Test_Delete_in_middle(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+	ws.Addtyping([]byte{'a', 'b', 'c'}, 2)
+	testhelpers.AssertString(t, "abc", ws.String())
+
+	n := ws.Delete(3,4)
+	testhelpers.AssertString(t, "ac", ws.String())
+	testhelpers.AssertInt(t, 0, n)
+}
+
+func Test_Delete_before_offset(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+
+	n := ws.Delete(1,2)
+	testhelpers.AssertString(t, "", ws.String())
+	testhelpers.AssertInt(t, 1, n)
+}
+
+func Test_Delete_spanning_offset(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+	ws.Addtyping([]byte{'a', 'b', 'c'}, 2)
+	testhelpers.AssertString(t, "abc", ws.String())
+
+	n := ws.Delete(1,3)
+	testhelpers.AssertString(t, "bc", ws.String())
+	testhelpers.AssertInt(t, 1, n)
+}
+
+
+func Test_Delete_multi(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+	ws.Addtyping([]byte{'a', 'b', 'c'}, 2)
+	testhelpers.AssertString(t, "abc", ws.String())
+
+	n := ws.Delete(3,5)
+	testhelpers.AssertString(t, "a", ws.String())
+	testhelpers.AssertInt(t, 0, n)
+}
+
+
+func Test_Delete_panic(t *testing.T) {
+	ws := New()
+	ws.Move(2)
+	ws.Addtyping([]byte{'a', 'b', 'c'}, 2)
+	testhelpers.AssertString(t, "abc", ws.String())
+
+	defer func() {
+		if e := recover(); e != nil {
+			s := e.(string)
+			testhelpers.AssertString(t, "Delete went wrong", s)
+		} else {
+			t.Fail()
+		}
+	}()
+
+	ws.Delete(5,6)
+}

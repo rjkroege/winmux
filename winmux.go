@@ -237,7 +237,7 @@ func acmetowin(q *Q, f io.Writer, e *ttypair.Echo) {
 					t.Type(e /* afd, dfd */)
 				}
 			case 'D': // deleting text from the body
-				n := t.Delete(e)
+				n := t.Delete(e.Q0, e.Q1)
 				// TODO(rjkroege): Delete from the winslice should
 				// automatically update the Offset in Winslice?
 				t.Move(-n)

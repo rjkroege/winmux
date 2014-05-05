@@ -40,12 +40,6 @@ func (t *Tty) Israw() bool {
 	return (!t.cook || t.password) /* && !isecho(t.fd0) */
 }
 
-// Deletes characters from the buffer etc
-func (t *Tty) Delete(e *acme.Event) int {
-	log.Print("Delete\n")
-	return 1
-}
-
 // Ships n backspaces to the child.
 func (t *Tty) Sendbs(n int) {
 	log.Printf("Sendbs %d\n", n)

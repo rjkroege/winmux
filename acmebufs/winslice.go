@@ -85,6 +85,37 @@ func (ws *Winslice) Move(p int) {
 	ws.Offset += p
 }
 
+// Removes the typing specified by the range returning the number
+// of characters deleted outside of the range (the amount that we
+// should adjust the offset following the Delete.)
+// TODO(rjkroege): Should this method update the offset?
+func (ws *Winslice) Delete(q0, q1 int) int {
+	log.Printf("Delete %d, %d\n", q0, q1)
+	var lq0, lq1, d int
+	switch {
+	case q0 < ws.Offset && q1<= ws.Offset:
+		log.Printf("Delete branch a")
+		return q1 - q0
+	case ws.Inslice(q1) && q0 < ws.Offset && q1 > ws.Offset:
+		log.Printf("Delete branch b")
+		lq0 = 0
+		lq1 = q1 - ws.Offset
+		d = lq1
+	case ws.Inslice(q0) && ws.Inslice(q1) && q0 >= ws.Offset && q1 > ws.Offset:
+		log.Printf("Delete branch c")
+		lq0 = q0 - ws.Offset
+		lq1 = q1 - ws.Offset
+		d = lq1 - lq0
+	default:
+		d = 0
+		panic("Delete went wrong")
+	}
+	
+	copy(ws.Typing[lq0:], ws.Typing[lq1:])
+	ws.Typing = ws.Typing[0:len(ws.Typing) - d]
+	return (q1 - q0) - d
+}
+
 // Is the provided position q0 in the Acme buffer before the start of
 // the slice. In particular: the ws is usually the last incomplete line
 // of text yet to be delivered to the shell and Offset is its start.
