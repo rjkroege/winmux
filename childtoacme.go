@@ -4,7 +4,7 @@ package main
 
 import (
 //	"bytes"
-//	"code.google.com/p/goplan9/plan9/acme"
+//	"9fans.net/go/acme"
 //	"fmt"
 	"github.com/rjkroege/winmux/ttypair"
 	"github.com/rjkroege/winmux/filter"
