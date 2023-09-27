@@ -1,3 +1,0 @@
-This is a [Go language](http://golang.org) replica of the Plan9 `win` command with the addition of persistent terminal multiplexing.
-
-Status: work in progress and not being actively advanced at this time.
